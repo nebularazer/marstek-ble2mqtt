@@ -176,11 +176,11 @@ Published releases include multi-arch Docker images on GitHub Container
 Registry:
 
 ```bash
-docker pull ghcr.io/<owner>/marstek-ble2mqtt:latest
-docker pull ghcr.io/<owner>/marstek-ble2mqtt:2026.5.26
+docker pull ghcr.io/nebularazer/marstek-ble2mqtt:latest
 ```
 
-Versioned Docker tags omit the leading `v` from the Git tag.
+Versioned Docker tags are also published and omit the leading `v` from the Git
+tag. For example, Git tag `v2026.5.26` publishes Docker tag `2026.5.26`.
 
 ## Development
 
