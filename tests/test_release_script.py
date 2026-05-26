@@ -49,6 +49,22 @@ def test_choose_version_rejects_duplicate_patch_override():
         release.choose_version("2026.5.26", ["v2026.5.26.3"], patch=3)
 
 
+def test_normalize_version_arg_accepts_optional_v_prefix():
+    assert release.normalize_version_arg("2026.5.26") == "2026.5.26"
+    assert release.normalize_version_arg("v2026.5.26.1") == "2026.5.26.1"
+
+
+def test_release_branch_name_uses_v_prefixed_tag():
+    assert release.release_branch("2026.5.26") == "release/v2026.5.26"
+
+
+def test_prepare_push_command_pushes_release_branch_not_main():
+    command = release.prepare_push_command("2026.5.26")
+
+    assert command == ["git", "push", "-u", "origin", "HEAD:refs/heads/release/v2026.5.26"]
+    assert "main" not in command
+
+
 def test_extract_changelog_section_matches_v_prefixed_or_plain_headings():
     content = """# Changelog
 
