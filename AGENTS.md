@@ -78,7 +78,19 @@ uv run pytest
 
 ## Commit Policy
 
-Use Conventional Commits for every commit that lands on `main`.
+`main` is protected. Do not commit or push directly to `main`. Start work from
+the current remote main branch and use a short topic branch:
+
+```bash
+git fetch origin
+git switch main
+git pull --ff-only origin main
+git switch -c <type>/<short-description>
+```
+
+Use Conventional Commits for every commit that lands on `main`. With squash
+merges, the PR title becomes the final commit title, so PR titles must also be
+conventional.
 
 Recommended commit flow:
 
@@ -104,6 +116,23 @@ Common types are `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`,
 Do not manually edit generated release sections in `CHANGELOG.md`. The release
 script updates the changelog from Conventional Commits through Commitizen.
 
+Push topic branches and open PRs instead of pushing to `main`:
+
+```bash
+git push -u origin <branch>
+gh pr create --base main --head <branch> --title "<type>: <summary>"
+```
+
+Wait for required checks before merge. After a squash merge, sync local `main`
+to the canonical remote history:
+
+```bash
+git switch main
+git pull --ff-only origin main
+```
+
+Keep account, SSH key, token, and machine-specific Git setup out of this file.
+
 ## Releases
 
 Releases are date-versioned:
@@ -114,7 +143,7 @@ Releases are date-versioned:
 - Python package metadata uses the same version without the leading `v`.
 - Docker image tags also omit the leading `v`, for example `2026.5.26`.
 
-Create a release from a clean worktree:
+Prepare a release from a clean local `main` branch:
 
 ```bash
 scripts/release
@@ -129,11 +158,19 @@ The release script:
 - runs the standard checks
 - uses Commitizen to update `pyproject.toml`, `uv.lock`, and `CHANGELOG.md`
 - creates `chore(release): vYYYY.M.D[.N]`
-- creates the matching Git tag
-- pushes the branch and tag to `origin`
+- pushes a `release/vYYYY.M.D[.N]` branch
+- prints the release PR command
+- does not push the tag until the release PR is merged
 
-Pushing the tag triggers the GitHub release workflow. It publishes a multi-arch
-Docker image for `linux/amd64` and `linux/arm64` to:
+After the release PR is squash-merged into `main`, publish the tag from the
+merged `origin/main` commit:
+
+```bash
+scripts/release finalize vYYYY.M.D
+```
+
+Pushing the finalized tag triggers the GitHub release workflow. It publishes a
+multi-arch Docker image for `linux/amd64` and `linux/arm64` to:
 
 ```text
 ghcr.io/<owner>/marstek-ble2mqtt

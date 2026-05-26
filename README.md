@@ -197,9 +197,15 @@ Releases are generated from Conventional Commits:
 scripts/release
 ```
 
-The release script updates `pyproject.toml`, `uv.lock`, and `CHANGELOG.md`,
-creates a date-versioned Git tag such as `v2026.5.26`, and pushes the tag to
-trigger GitHub Actions.
+The release script updates `pyproject.toml`, `uv.lock`, and `CHANGELOG.md`, then
+pushes a release branch for review. After the release PR is squash-merged into
+`main`, publish the tag from the merged commit:
+
+```bash
+scripts/release finalize v2026.5.26
+```
+
+The finalized tag triggers GitHub Actions.
 
 ## References
 
