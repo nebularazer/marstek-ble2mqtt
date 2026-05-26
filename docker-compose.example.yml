@@ -1,0 +1,13 @@
+services:
+  marstek-ble2mqtt:
+    build: .
+    container_name: marstek-ble2mqtt
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./config.toml:/config/config.toml:ro
+      - /var/run/dbus:/var/run/dbus
+    environment:
+      MQTT_HOST: localhost
+      MQTT_PORT: "1883"
+    command: ["run", "--config", "/config/config.toml"]

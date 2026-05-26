@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "marstek-ble2mqtt"
+version = "0.1.0"
+description = "Bluetooth-to-MQTT bridge for Marstek/Hame batteries."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "bleak>=0.22.0",
+    "paho-mqtt>=2.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "commitizen>=4.10.0",
+    "pre-commit>=4.0.0",
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+]
+
+[project.scripts]
+marstek-ble2mqtt = "marstek_ble_mqtt.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/marstek_ble_mqtt"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "uv"
+version_scheme = "pep440"
+tag_format = "v${version}"
+changelog_file = "CHANGELOG.md"
+changelog_incremental = true
+update_changelog_on_bump = true
+annotated_tag = true
+bump_message = "chore(release): v$new_version"

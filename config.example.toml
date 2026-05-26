@@ -1,0 +1,28 @@
+[ble]
+address = "AA:BB:CC:DD:EE:FF"
+poll_interval = 10
+connect_timeout = 30
+response_timeout = 8
+
+[mqtt]
+host = "localhost"
+port = 1883
+username = ""
+password = ""
+topic_prefix = "marstek"
+publish_groups = [
+  "battery",
+  "pv",
+  # "grid",
+  # "temperatures",
+  # "cells",
+  # "diagnostics",
+  # "full",
+]
+
+[device]
+profile = "auto"
+
+[capture]
+# Optional local JSONL protocol-write capture. Leave empty to disable.
+protocol_writes_path = ""
