@@ -53,9 +53,12 @@ def test_project_messages_uses_selected_groups_topic_suffixes_and_stable_json() 
         "soc_percent": 83.0,
         "power_w": 605.68,
     }
-    assert json.loads(messages[1].payload_json)["strings"] == [
-        {"index": 1, "voltage_v": 27.7, "power_w": 294.0}
-    ]
+    assert json.loads(messages[1].payload_json) == {
+        "ts": "2026-05-24T12:00:00+00:00",
+        "total_power_w": 1139.4,
+        "pv1_voltage_v": 27.7,
+        "pv1_power_w": 294.0,
+    }
     assert "current_a" not in messages[1].payload_json
 
 
