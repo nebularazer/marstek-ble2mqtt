@@ -29,6 +29,7 @@ address = "AA:BB:CC:DD:EE:FF"
 
 [mqtt]
 host = "localhost"
+client_id = ""
 publish_groups = [
   "battery",
   "pv",
@@ -83,6 +84,7 @@ host = "localhost"
 port = 1883
 username = ""
 password = ""
+client_id = ""
 topic_prefix = "marstek"
 publish_groups = [
   "battery",
@@ -109,6 +111,7 @@ MQTT_HOST
 MQTT_PORT
 MQTT_USERNAME
 MQTT_PASSWORD
+MQTT_CLIENT_ID
 MQTT_TOPIC_PREFIX
 MQTT_PUBLISH_GROUPS
 MARSTEK_CAPTURE_WRITES_PATH
@@ -119,6 +122,9 @@ MARSTEK_CAPTURE_WRITES_PATH
 ```bash
 MQTT_PUBLISH_GROUPS=battery,pv,inverter
 ```
+
+`mqtt.client_id` is optional. Set it, or `MQTT_CLIENT_ID`, when your broker or
+observability setup expects a stable MQTT client identifier.
 
 ## 📡 MQTT Payloads
 
@@ -213,6 +219,11 @@ in a top-level `frame` object when present:
 Operational logs are JSON Lines on stdout. MQTT telemetry is not duplicated in
 the service logs.
 
+The MQTT publisher keeps one connection open for the process lifetime. Paho's
+network loop handles broker reconnects with a bounded 1-60 second backoff.
+Individual MQTT publish failures are logged as `mqtt_publish_failed` and do not
+force a BLE reconnect.
+
 ## 🧭 Device Profiles
 
 List available profiles:
@@ -280,6 +291,10 @@ Run with Docker Compose:
 ```bash
 docker compose -f docker-compose.example.yml up
 ```
+
+Ctrl-C and Docker stop request a graceful shutdown. The bridge exits the BLE
+context, closes the MQTT publisher, logs `stopped`, and returns the conventional
+signal exit code: `130` for SIGINT and `143` for SIGTERM.
 
 Bluetooth access from containers is host-specific. The example compose file
 shows the common Linux DBus/host-network setup, but your host may need different
