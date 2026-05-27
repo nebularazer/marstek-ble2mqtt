@@ -24,6 +24,7 @@ class MergedPullRequest(NamedTuple):
     title: str
     body: str
     merge_commit: str
+    url: str
 
 
 def normalize_date(value: str | None) -> str:
@@ -271,7 +272,7 @@ def merged_pr_for_commit(commit: str) -> MergedPullRequest | None:
             "--search",
             commit,
             "--json",
-            "number,title,body,mergeCommit",
+            "number,title,body,mergeCommit,url",
             "--limit",
             "10",
         ]
@@ -284,6 +285,7 @@ def merged_pr_for_commit(commit: str) -> MergedPullRequest | None:
                 title=str(item["title"]),
                 body=str(item.get("body") or ""),
                 merge_commit=commit,
+                url=str(item["url"]),
             )
     return None
 
@@ -339,7 +341,7 @@ def format_details_section(prs: list[MergedPullRequest]) -> str | None:
         notes = extract_release_notes(pr.body)
         if notes is None:
             continue
-        lines.append(f"- PR {pr.number}: {pr.title}")
+        lines.append(f"- [PR {pr.number}]({pr.url}): {pr.title}")
         for line in notes.splitlines():
             stripped = line.strip()
             if not stripped:

@@ -15,7 +15,7 @@ Commitizen.
 
 ### Details
 
-- PR 4: refactor!: flatten MQTT telemetry payloads
+- [PR 4](https://github.com/nebularazer/marstek-ble2mqtt/pull/4): refactor!: flatten MQTT telemetry payloads
   - MQTT payloads and stdout samples now use flat scalar fields.
   - The `full` publish group and public `generic` runtime profile were removed.
   - Unknown `run` flags now point users to config/env settings.
