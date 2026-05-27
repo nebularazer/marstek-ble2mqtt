@@ -5,6 +5,8 @@ import pytest
 
 from marstek_ble_mqtt.models import (
     BatteryData,
+    CellData,
+    DiagnosticData,
     FrameMetadata,
     PvData,
     PvStringData,
@@ -105,6 +107,36 @@ def test_projected_payloads_round_float_artifacts_without_changing_telemetry() -
     assert sample["battery_power_w"] == 609.861
     assert sample["pv_total_power_w"] == 1017.6
     assert telemetry.pv.total_power_w == 1017.5999999999999
+
+
+def test_projected_cells_use_pack_temperature_sensor_names() -> None:
+    timestamp = datetime(2026, 5, 24, 12, 0, tzinfo=UTC)
+    telemetry = Telemetry(
+        cells=CellData(
+            voltages_v=(3.314,),
+            temperatures_c=(31.0, 30.0),
+            voltage_delta_v=0.008000000000000007,
+        ),
+        diagnostics=DiagnosticData(battery_temp_unconfirmed_c=74.0),
+    )
+
+    messages = project_telemetry_messages(
+        timestamp=timestamp,
+        telemetry=telemetry,
+        publish_groups=("cells", "diagnostics"),
+    )
+    sample = project_sample_payload(
+        timestamp=timestamp,
+        telemetry=telemetry,
+        publish_groups=("cells", "diagnostics"),
+    )
+
+    assert messages[0].payload["cell01_voltage_v"] == 3.314
+    assert messages[0].payload["pack_temp01_c"] == 31.0
+    assert messages[0].payload["voltage_delta_v"] == 0.008
+    assert "cell_temp01_c" not in messages[0].payload
+    assert sample["pack_temp01_c"] == 31.0
+    assert sample["diagnostics_battery_temp_unconfirmed_c"] == 74.0
 
 
 def test_full_publish_group_is_not_supported() -> None:

@@ -157,7 +157,7 @@ def _flat_cell_payload(cells: CellData) -> dict[str, Any]:
             payload[f"cell{index:02d}_voltage_v"] = voltage
     for index, temperature in enumerate(cells.temperatures_c, start=1):
         if temperature is not None:
-            payload[f"cell_temp{index:02d}_c"] = temperature
+            payload[f"pack_temp{index:02d}_c"] = temperature
     return payload
 
 
@@ -178,7 +178,7 @@ def _project_scalar(value: Any) -> Any:
 def _sample_field_name(group: str, key: str) -> str:
     if group == "pv" and key.startswith("pv"):
         return key
-    if group == "cells" and key.startswith("cell"):
+    if group == "cells" and (key.startswith("cell") or key.startswith("pack")):
         return key
     prefix = "cell" if group == "cells" else group
     return f"{prefix}_{key}"

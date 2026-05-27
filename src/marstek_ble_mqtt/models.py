@@ -80,7 +80,6 @@ class TemperatureData:
     cell_temperatures_c: tuple[float, ...] = ()
     environment_c: float | None = None
     tail_mosfet_c: float | None = None
-    battery_unconfirmed_c: float | None = None
 
 
 @dataclass(frozen=True)
@@ -109,6 +108,7 @@ class DiagnosticData:
     bms_warning2: int | None = None
     cell_flag: int | None = None
     bms_number: int | None = None
+    battery_temp_unconfirmed_c: float | None = None
     inverter_unknown_words: dict[str, dict[str, int]] = field(default_factory=dict)
     mppt_unknown_words: dict[str, dict[str, int]] = field(default_factory=dict)
     bms_unknown_words: dict[str, dict[str, int]] = field(default_factory=dict)

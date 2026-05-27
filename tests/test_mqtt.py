@@ -68,10 +68,14 @@ def test_publish_messages_with_client_filters_detailed_groups_independently() ->
     assert messages["marstek/inverter"]["frequency_hz"] == 50.01
     assert messages["marstek/temperatures"]["environment_c"] == 38.0
     assert messages["marstek/cells"]["cell01_voltage_v"] == 3.314
+    assert messages["marstek/cells"]["pack_temp01_c"] == 31.0
     assert messages["marstek/diagnostics"]["mppt_error"] == 0
     assert messages["marstek/diagnostics"]["bms_error"] == 0
+    assert messages["marstek/diagnostics"]["battery_temp_unconfirmed_c"] == 30.0
     assert messages["marstek/diagnostics"]["cell_flag"] == 192
     assert messages["marstek/diagnostics"]["bms_number"] == 1
+    assert "battery_unconfirmed_c" not in messages["marstek/temperatures"]
+    assert "cell_temp01_c" not in messages["marstek/cells"]
     assert "inverter_unknown_words" not in messages["marstek/diagnostics"]
     assert "marstek/battery" not in messages
     assert "marstek/pv" not in messages

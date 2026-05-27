@@ -293,7 +293,6 @@ def _telemetry_from_hmm(
             cell_temperatures_c=cell_temperatures,
             environment_c=hmm["environment_temp_c"],
             tail_mosfet_c=hmm["tail_mosfet_temp_c"],
-            battery_unconfirmed_c=hmm["battery_temp_c_unconfirmed"],
         ),
         cells=CellData(
             voltages_v=tuple(hmm["cell_voltages_v"]),
@@ -314,6 +313,7 @@ def _telemetry_from_hmm(
             bms_warning2=hmm["bms_warning2"],
             cell_flag=hmm["cell_flag"],
             bms_number=hmm["bms_number"],
+            battery_temp_unconfirmed_c=hmm["battery_temp_c_unconfirmed"],
             inverter_unknown_words=inverter["unknown_words"],
             mppt_unknown_words=mppt["unknown_words"],
             bms_unknown_words=hmm["unknown_words"],
