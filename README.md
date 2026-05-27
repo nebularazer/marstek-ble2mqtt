@@ -327,17 +327,24 @@ uv run cz commit
 uv run pre-commit install --hook-type commit-msg
 ```
 
-Releases are generated from Conventional Commits:
+Feature PR titles drive the squash commit and release category. Use the PR
+template's release notes section for user-facing changelog detail; `- None` is
+valid for internal-only changes.
+
+Releases are generated from Conventional Commits and merged PR release notes:
 
 ```bash
 scripts/release
 ```
 
-The release script updates `pyproject.toml`, `uv.lock`, and `CHANGELOG.md`, then
-pushes a release branch for review. After the release PR is squash-merged into
-`main`, publish the tag from the merged commit:
+The release script updates `pyproject.toml`, `uv.lock`, and `CHANGELOG.md`,
+appends PR release-note details since the previous tag, pushes a release branch,
+and opens a release PR for review. After the release PR is squash-merged into
+`main`, sync local `main` and publish the tag from the merged commit:
 
 ```bash
+git switch main
+git pull --ff-only origin main
 scripts/release finalize v2026.5.26
 ```
 
