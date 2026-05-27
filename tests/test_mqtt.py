@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from marstek_ble_mqtt.mqtt import publish_messages_with_client
+from marstek_ble_mqtt.mqtt import MqttConfig, MqttPublisher, publish_messages_with_client
 from marstek_ble_mqtt.profiles.jupiter_hmm import decode_telemetry_frame
 from marstek_ble_mqtt.telemetry_projection import project_telemetry_messages
 from tests.test_decoder import BMS_DATA_FRAME
@@ -12,6 +12,41 @@ from tests.test_decoder import BMS_DATA_FRAME
 class FakeMqttClient:
     def __init__(self) -> None:
         self.messages: list[tuple[str, str, bool]] = []
+
+    def publish(self, topic: str, payload: str, retain: bool = False) -> None:
+        self.messages.append((topic, payload, retain))
+
+
+class FakePersistentClient:
+    def __init__(self, *, client_id: str | None = None) -> None:
+        self.client_id = client_id
+        self.username: str | None = None
+        self.password: str | None = None
+        self.reconnect_delay: tuple[int, int] | None = None
+        self.connected: tuple[str, int, int] | None = None
+        self.loop_started = False
+        self.loop_stopped = False
+        self.disconnected = False
+        self.messages: list[tuple[str, str, bool]] = []
+
+    def username_pw_set(self, username: str, password: str | None = None) -> None:
+        self.username = username
+        self.password = password
+
+    def reconnect_delay_set(self, *, min_delay: int, max_delay: int) -> None:
+        self.reconnect_delay = (min_delay, max_delay)
+
+    def connect(self, host: str, port: int, keepalive: int) -> None:
+        self.connected = (host, port, keepalive)
+
+    def loop_start(self) -> None:
+        self.loop_started = True
+
+    def loop_stop(self) -> None:
+        self.loop_stopped = True
+
+    def disconnect(self) -> None:
+        self.disconnected = True
 
     def publish(self, topic: str, payload: str, retain: bool = False) -> None:
         self.messages.append((topic, payload, retain))
@@ -47,6 +82,63 @@ def test_publish_messages_with_client_publishes_configured_group_json_topics() -
     assert messages["marstek/pv"]["pv4_power_w"] == 233.2
     assert "marstek/inverter" not in messages
     assert "marstek/full" not in messages
+
+
+def test_persistent_publisher_opens_once_and_closes() -> None:
+    clients: list[FakePersistentClient] = []
+
+    def fake_client_factory(*, client_id: str | None) -> FakePersistentClient:
+        client = FakePersistentClient(client_id=client_id)
+        clients.append(client)
+        return client
+
+    publisher = MqttPublisher(
+        MqttConfig(
+            host="mqtt.example.test",
+            port=1884,
+            username="user",
+            password="secret",
+            client_id="battery-bridge",
+            topic_prefix="marstek/test",
+        ),
+        client_factory=fake_client_factory,
+    )
+
+    publisher.close()
+    publisher.close()
+
+    assert len(clients) == 1
+    client = clients[0]
+    assert client.client_id == "battery-bridge"
+    assert client.username == "user"
+    assert client.password == "secret"
+    assert client.reconnect_delay == (1, 60)
+    assert client.connected == ("mqtt.example.test", 1884, 30)
+    assert client.loop_started is True
+    assert client.loop_stopped is True
+    assert client.disconnected is True
+
+
+def test_persistent_publisher_delegates_publish() -> None:
+    client = FakePersistentClient(client_id="battery-bridge")
+    publisher = MqttPublisher(
+        MqttConfig(client_id="battery-bridge", topic_prefix="marstek/test"),
+        client_factory=lambda *, client_id: client,
+    )
+    telemetry = decode_telemetry_frame(
+        bytes.fromhex(BMS_DATA_FRAME),
+        timestamp=datetime(2026, 5, 24, 10, 0, tzinfo=UTC),
+    )
+    messages_to_publish = project_telemetry_messages(
+        timestamp=telemetry.timestamp,
+        telemetry=telemetry,
+        publish_groups=("battery",),
+    )
+
+    topics = publisher.publish(messages_to_publish)
+
+    assert topics == ["marstek/test/battery"]
+    assert client.messages[0][0] == "marstek/test/battery"
 
 
 def test_publish_messages_with_client_filters_detailed_groups_independently() -> None:
