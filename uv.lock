@@ -350,7 +350,7 @@ wheels = [
 
 [[package]]
 name = "marstek-ble2mqtt"
-version = "2026.5.26"
+version = "2026.5.27"
 source = { editable = "." }
 dependencies = [
     { name = "bleak" },

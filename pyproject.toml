@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "marstek-ble2mqtt"
-version = "2026.5.26"
+version = "2026.5.27"
 description = "Bluetooth-to-MQTT bridge for Marstek/Hame batteries."
 readme = "README.md"
 requires-python = ">=3.11"
