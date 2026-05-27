@@ -2,33 +2,20 @@
 
 Bluetooth-to-MQTT bridge for Marstek/Hame batteries.
 
-The project reads battery telemetry over Bluetooth Low Energy and publishes
-normalized values to MQTT. It currently has one verified normalized profile for a
-Jupiter C / HMM-style device. Other Marstek/Hame devices can still be inspected
-and captured, but they need verified device profiles before normalized telemetry
-is promised.
+`marstek-ble2mqtt` reads telemetry over Bluetooth Low Energy, decodes it through
+a device profile, and publishes flat JSON payloads to MQTT. The runtime is
+telemetry-only: it does not configure, schedule, charge, discharge, calibrate, or
+control the battery.
 
-## Safety
+## 🚀 Quick Start
 
-Marstek/Hame telemetry over BLE uses a request/response protocol: the bridge must
-write a read request to the battery's BLE request characteristic before the
-battery sends telemetry back on a notify characteristic.
-
-Normal operation only sends allowlisted read telemetry requests. It does not send
-control, configuration, schedule, charge/discharge, calibration, or DOD commands.
-
-For explicit local debugging, protocol write capture can be enabled in config or
-with `MARSTEK_CAPTURE_WRITES_PATH`. It writes JSON Lines containing only the
-timestamp, purpose, characteristic UUID, and payload hex for each allowlisted
-read request. Leave the path empty to disable capture.
-
-## Install
+Install the development environment:
 
 ```bash
 uv sync --dev
 ```
 
-Copy and edit the example config:
+Copy the example config and edit it:
 
 ```bash
 cp config.example.toml config.toml
@@ -42,55 +29,133 @@ address = "AA:BB:CC:DD:EE:FF"
 
 [mqtt]
 host = "localhost"
-publish_groups = ["battery", "pv"]
+publish_groups = [
+  "battery",
+  "pv",
+  # "grid",
+  # "temperatures",
+  # "cells",
+  # "diagnostics",
+]
 
 [capture]
 protocol_writes_path = ""
 ```
 
-## Find the BLE Address
-
-Use the debug scanner to find likely Marstek/Hame advertisements:
+Find your BLE address with the scanner:
 
 ```bash
 uv run marstek-ble2mqtt debug scan
 ```
 
-The scanner ranks devices whose advertised name or manufacturer data contains
-known markers such as `MST`, `MARSTEK`, `HAME`, `HMM`, `HMJ`, `JUPITER`, or
-`VENUS`, and prints a suggested BLE address.
-
-## Run the MQTT Bridge
+Run the MQTT bridge:
 
 ```bash
 uv run marstek-ble2mqtt run --config config.toml
 ```
 
-`run` writes operational logs as JSON Lines on stdout. Telemetry values are
-published to MQTT, not duplicated in the service logs.
-
-## Run Without MQTT
-
-For a terminal-only view of the same BLE telemetry path:
+Watch the same telemetry path without MQTT:
 
 ```bash
 uv run marstek-ble2mqtt run --config config.toml --stdout
 ```
 
-This keeps one BLE connection open, sends one read telemetry request per poll
-interval, prints one compact JSON object per sample, and stops on Ctrl-C. The
-JSON contains the same telemetry groups selected by `[mqtt].publish_groups`.
-Operational messages such as connect, reconnect, and sample errors are also
-printed as JSON lines with an `event` field.
+`run` intentionally accepts only `--config` and `--stdout`. Put runtime settings
+in `config.toml` or environment variables instead of building long command-line
+flag lists.
 
-## MQTT Publish Groups
+## ⚙️ Configuration
 
-The default topic prefix is `marstek`. Telemetry publishing is controlled by
-explicit MQTT groups in `config.toml`; the bridge has no hidden telemetry group
-default. The example config enables:
+The default config path is `config.toml`; pass `--config` when you keep it
+somewhere else.
+
+Common config keys:
 
 ```toml
-publish_groups = ["battery", "pv"]
+[ble]
+address = "AA:BB:CC:DD:EE:FF"
+poll_interval = 10
+connect_timeout = 30
+response_timeout = 8
+
+[mqtt]
+host = "localhost"
+port = 1883
+username = ""
+password = ""
+topic_prefix = "marstek"
+publish_groups = [
+  "battery",
+  "pv",
+  # "grid",
+  # "temperatures",
+  # "cells",
+  # "diagnostics",
+]
+
+[device]
+profile = "auto"
+```
+
+Environment variables override the config file:
+
+```text
+MARSTEK_BLE_ADDRESS
+MARSTEK_POLL_INTERVAL
+MARSTEK_CONNECT_TIMEOUT
+MARSTEK_RESPONSE_TIMEOUT
+MARSTEK_DEVICE_PROFILE
+MQTT_HOST
+MQTT_PORT
+MQTT_USERNAME
+MQTT_PASSWORD
+MQTT_TOPIC_PREFIX
+MQTT_PUBLISH_GROUPS
+MARSTEK_CAPTURE_WRITES_PATH
+```
+
+`MQTT_PUBLISH_GROUPS` is a comma-separated list, for example:
+
+```bash
+MQTT_PUBLISH_GROUPS=battery,pv,grid
+```
+
+## 📡 MQTT Payloads
+
+The default topic prefix is `marstek`. Each selected publish group emits one
+flat JSON payload with a `ts` timestamp and scalar fields, which keeps Telegraf
+JSON ingestion straightforward.
+
+For the example config:
+
+```toml
+publish_groups = [
+  "battery",
+  "pv",
+  # "grid",
+  # "temperatures",
+  # "cells",
+  # "diagnostics",
+]
+```
+
+the bridge publishes:
+
+```text
+marstek/battery
+marstek/pv
+```
+
+Example `marstek/battery` payload:
+
+```json
+{"power_w":598.674,"soc_percent":46.0,"ts":"2026-05-24T10:00:00+00:00","voltage_v":52.98}
+```
+
+Example `marstek/pv` payload:
+
+```json
+{"pv1_power_w":238.3,"pv1_voltage_v":27.7,"pv4_power_w":233.2,"total_power_w":890.1,"ts":"2026-05-24T10:00:00+00:00"}
 ```
 
 Available groups:
@@ -104,30 +169,20 @@ Available groups:
 - `temperatures`: inverter, MPPT, MOSFET, cell average, per-cell temperature,
   environment, tail MOSFET, and unconfirmed battery temperature.
 - `cells`: 16 cell voltages, min/max/average/delta, and cell temperature words.
-- `diagnostics`: inverter/MPPT state and error words, BMS error/warning/flag
-  words, plus still-unknown word maps.
-- `full`: one complete decoded JSON document with all groups, frame
-  metadata, raw decoded fields, and unknown words.
+- `diagnostics`: known scalar inverter/MPPT/BMS state, error, warning, and flag
+  words. Unknown protocol word maps are intentionally not published.
 
-Each selected group publishes one JSON payload. JSON is implied by the payload,
-so topics do not carry a `/json` suffix. For example, `battery` and `pv` publish:
+`run --stdout` prints one compact JSON object per sample. Because stdout combines
+selected groups into one object, group prefixes are used where needed:
 
-```text
-marstek/battery
-marstek/pv
+```json
+{"battery_soc_percent":46.0,"pv1_power_w":238.3,"pv_total_power_w":890.1,"ts":"2026-05-24T10:00:00+00:00"}
 ```
 
-Each group payload includes `ts` so Telegraf can parse the message as a
-self-contained JSON measurement. `full` publishes:
+Operational logs are JSON Lines on stdout. MQTT telemetry is not duplicated in
+the service logs.
 
-```text
-marstek/full
-```
-
-Profiles that cannot decode normalized telemetry can still publish their raw
-validated frame data through `full`.
-
-## Device Profiles
+## 🧭 Device Profiles
 
 List available profiles:
 
@@ -137,26 +192,53 @@ uv run marstek-ble2mqtt profiles
 
 Built-in profiles:
 
-- `jupiter-hmm`: experimental normalized decoder verified against one Jupiter C /
-  HMM-style device.
-- `generic`: validates frames and publishes raw JSON only.
-- `auto`: currently defaults to `jupiter-hmm`.
+- `auto`: currently resolves to `jupiter-hmm`.
+- `jupiter-hmm`: experimental normalized decoder verified against one Jupiter C
+  / HMM-style device.
 
-## Debug Tools
+Do not assume normalized support for other Marstek/Hame devices until fixtures
+and protocol notes back it up. Use the debug tools for passive discovery.
 
-The debug namespace is for discovery and passive inspection:
+## 🛡️ Safety
+
+Marstek/Hame telemetry over BLE uses a request/response protocol: the bridge
+must write an allowlisted read request to the battery's BLE request
+characteristic before the battery sends telemetry back on a notify
+characteristic.
+
+Normal operation only sends allowlisted read telemetry requests. It does not
+send control, configuration, schedule, charge/discharge, calibration, or DOD
+commands.
+
+For explicit local debugging, protocol write capture can be enabled in config or
+with `MARSTEK_CAPTURE_WRITES_PATH`. It writes JSON Lines containing only the
+timestamp, purpose, characteristic UUID, and payload hex for each allowlisted
+read request. Leave the path empty to disable capture.
+
+## 🔎 Debug Tools
+
+Scan for likely Marstek/Hame advertisements:
 
 ```bash
 uv run marstek-ble2mqtt debug scan
+```
+
+The scanner ranks devices whose advertised name or manufacturer data contains
+known markers such as `MST`, `MARSTEK`, `HAME`, `HMM`, `HMJ`, `JUPITER`, or
+`VENUS`, and prints a suggested BLE address.
+
+Inspect GATT services read-only:
+
+```bash
 uv run marstek-ble2mqtt debug services --address AA:BB:CC:DD:EE:FF
 ```
 
 `debug services` connects once and reads only characteristics that advertise the
 BLE `read` property.
 
-## Docker
+## 🐳 Docker
 
-Build the image:
+Build the image locally:
 
 ```bash
 docker build -t marstek-ble2mqtt .
@@ -168,8 +250,8 @@ Run with Docker Compose:
 docker compose -f docker-compose.example.yml up
 ```
 
-Bluetooth access from containers is host-specific. The example compose file shows
-the common Linux DBus/host-network setup, but your host may need different
+Bluetooth access from containers is host-specific. The example compose file
+shows the common Linux DBus/host-network setup, but your host may need different
 Bluetooth device or permission mappings.
 
 Published releases include multi-arch Docker images on GitHub Container
@@ -179,10 +261,18 @@ Registry:
 docker pull ghcr.io/nebularazer/marstek-ble2mqtt:latest
 ```
 
-Versioned Docker tags are also published and omit the leading `v` from the Git
-tag. For example, Git tag `v2026.5.26` publishes Docker tag `2026.5.26`.
+Versioned Docker tags omit the leading `v` from the Git tag. For example, Git
+tag `v2026.5.26` publishes Docker tag `2026.5.26`.
 
-## Development
+## 🧪 Development
+
+Run the standard checks:
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run pytest
+```
 
 This repository uses Conventional Commits and Commitizen:
 
@@ -207,7 +297,7 @@ scripts/release finalize v2026.5.26
 
 The finalized tag triggers GitHub Actions.
 
-## References
+## 📚 References
 
 This project was built by comparing local BLE captures with existing community
 work:

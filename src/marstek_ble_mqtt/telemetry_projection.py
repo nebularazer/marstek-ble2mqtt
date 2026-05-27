@@ -184,4 +184,3 @@ def _stable_json(payload: dict[str, Any]) -> str:
 
 def _timestamp_json(timestamp: datetime) -> str:
     return timestamp.astimezone(UTC).isoformat()
-
