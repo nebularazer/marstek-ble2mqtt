@@ -13,7 +13,7 @@ from marstek_ble_mqtt.models import (
     CellData,
     DiagnosticData,
     FrameMetadata,
-    GridData,
+    InverterData,
     PvData,
     PvStringData,
     Telemetry,
@@ -275,7 +275,7 @@ def _telemetry_from_hmm(
             mppt_warning=mppt["warning"],
             mppt_temperature_c=mppt["temperature_c"],
         ),
-        grid=GridData(
+        inverter=InverterData(
             inverter_state_word=inverter["state_word"],
             voltage_v=inverter["grid_voltage_v"],
             current_a=inverter["grid_current_a"],

@@ -13,7 +13,7 @@ VALID_PUBLISH_GROUPS = frozenset(
     {
         "battery",
         "pv",
-        "grid",
+        "inverter",
         "temperatures",
         "cells",
         "diagnostics",

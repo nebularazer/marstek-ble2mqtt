@@ -51,11 +51,11 @@ def test_environment_overrides_config(tmp_path: Path, monkeypatch) -> None:
 def test_environment_overrides_publish_groups(tmp_path: Path, monkeypatch) -> None:
     config_path = tmp_path / "config.toml"
     config_path.write_text('[mqtt]\npublish_groups = ["battery"]\n', encoding="utf-8")
-    monkeypatch.setenv("MQTT_PUBLISH_GROUPS", "grid, temperatures")
+    monkeypatch.setenv("MQTT_PUBLISH_GROUPS", "inverter, temperatures")
 
     config = load_config(config_path)
 
-    assert config.mqtt.publish_groups == ("grid", "temperatures")
+    assert config.mqtt.publish_groups == ("inverter", "temperatures")
 
 
 def test_environment_overrides_capture_writes_path(tmp_path: Path, monkeypatch) -> None:

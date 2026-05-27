@@ -44,7 +44,7 @@ def test_format_sample_json_includes_selected_groups_only() -> None:
         "pv2_power_w": 232.9,
         "pv_total_power_w": 1139.4,
     }
-    assert "grid" not in payload
+    assert "inverter" not in payload
 
 
 def test_print_sample_json_writes_compact_json(capsys) -> None:

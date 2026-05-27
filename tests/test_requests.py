@@ -106,7 +106,7 @@ def test_ble_request_client_captures_protocol_writes() -> None:
         await client.read(command)
 
         assert records[0].timestamp == datetime(2026, 5, 24, 12, 0, tzinfo=UTC)
-        assert records[0].purpose == "Live battery/PV/grid/cell telemetry"
+        assert records[0].purpose == "Live battery/PV/inverter/cell telemetry"
         assert records[0].characteristic_uuid == "0000ff01-0000-1000-8000-00805f9b34fb"
         assert records[0].payload_hex == "7305231441"
 
@@ -139,7 +139,7 @@ def test_protocol_write_jsonl_capture_writes_expected_record(tmp_path) -> None:
 
     assert path.read_text(encoding="utf-8") == (
         '{"characteristic_uuid":"0000ff01-0000-1000-8000-00805f9b34fb",'
-        '"payload_hex":"7305231441","purpose":"Live battery/PV/grid/cell telemetry",'
+        '"payload_hex":"7305231441","purpose":"Live battery/PV/inverter/cell telemetry",'
         '"timestamp":"2026-05-24T12:00:00+00:00"}\n'
     )
 

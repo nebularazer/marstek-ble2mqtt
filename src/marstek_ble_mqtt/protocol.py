@@ -18,7 +18,7 @@ class ReadCommand:
 
 
 SAFE_READ_COMMANDS: dict[str, ReadCommand] = {
-    "bms-data": ReadCommand(0x14, "bms-data", "Live battery/PV/grid/cell telemetry"),
+    "bms-data": ReadCommand(0x14, "bms-data", "Live battery/PV/inverter/cell telemetry"),
 }
 
 SAFE_READ_COMMAND_CODES = frozenset(command.code for command in SAFE_READ_COMMANDS.values())

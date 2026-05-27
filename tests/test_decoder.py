@@ -143,10 +143,10 @@ def test_decode_bms_frame_uses_experimental_hmm_offsets() -> None:
     assert telemetry.battery.design_capacity_wh == 2560.0
     assert telemetry.battery.charge_current_limit_a == 50.0
     assert telemetry.battery.discharge_current_limit_a == 50.0
-    assert telemetry.grid.voltage_v == 246.5
-    assert telemetry.grid.frequency_hz == 50.01
-    assert telemetry.grid.power_w == 613.0
-    assert telemetry.grid.inverter_temperature_c == 48.0
+    assert telemetry.inverter.voltage_v == 246.5
+    assert telemetry.inverter.frequency_hz == 50.01
+    assert telemetry.inverter.power_w == 613.0
+    assert telemetry.inverter.inverter_temperature_c == 48.0
     assert telemetry.pv.strings[0].voltage_v == 27.7
     assert telemetry.pv.strings[0].current_a == 8.5
     assert telemetry.pv.strings[0].power_w == 238.3

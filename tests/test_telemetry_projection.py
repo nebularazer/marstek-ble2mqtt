@@ -26,6 +26,8 @@ def test_validate_publish_groups_rejects_empty_and_unknown() -> None:
         validate_publish_groups(())
     with pytest.raises(ValueError, match="Unknown MQTT publish group"):
         validate_publish_groups(("battery", "summary"))
+    with pytest.raises(ValueError, match="Unknown MQTT publish group"):
+        validate_publish_groups(("grid",))
 
 
 def test_project_messages_uses_selected_groups_topic_suffixes_and_stable_json() -> None:

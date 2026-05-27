@@ -45,7 +45,7 @@ def test_publish_messages_with_client_publishes_configured_group_json_topics() -
     assert messages["marstek/pv"]["total_power_w"] == 890.1
     assert messages["marstek/pv"]["pv1_voltage_v"] == 27.7
     assert messages["marstek/pv"]["pv4_power_w"] == 233.2
-    assert "marstek/grid" not in messages
+    assert "marstek/inverter" not in messages
     assert "marstek/full" not in messages
 
 
@@ -56,7 +56,7 @@ def test_publish_messages_with_client_filters_detailed_groups_independently() ->
     messages_to_publish = project_telemetry_messages(
         timestamp=telemetry.timestamp,
         telemetry=telemetry,
-        publish_groups=("grid", "temperatures", "cells", "diagnostics"),
+        publish_groups=("inverter", "temperatures", "cells", "diagnostics"),
     )
     publish_messages_with_client(
         client,
@@ -65,7 +65,7 @@ def test_publish_messages_with_client_filters_detailed_groups_independently() ->
     )
 
     messages = {topic: json.loads(payload) for topic, payload, _ in client.messages}
-    assert messages["marstek/grid"]["frequency_hz"] == 50.01
+    assert messages["marstek/inverter"]["frequency_hz"] == 50.01
     assert messages["marstek/temperatures"]["environment_c"] == 38.0
     assert messages["marstek/cells"]["cell01_voltage_v"] == 3.314
     assert messages["marstek/diagnostics"]["mppt_error"] == 0
@@ -91,5 +91,5 @@ def test_project_messages_rejects_unknown_publish_groups() -> None:
         project_telemetry_messages(
             timestamp=datetime(2026, 5, 24, 10, 0, tzinfo=UTC),
             telemetry=decode_telemetry_frame(bytes.fromhex(BMS_DATA_FRAME)),
-            publish_groups=("battery", "summary"),
+            publish_groups=("battery", "grid"),
         )
