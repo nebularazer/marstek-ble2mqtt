@@ -13,7 +13,7 @@ topic_prefix = "marstek"
 publish_groups = [
   "battery",
   "pv",
-  # "grid",
+  # "inverter",
   # "temperatures",
   # "cells",
   # "diagnostics",
