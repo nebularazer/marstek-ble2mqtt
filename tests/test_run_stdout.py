@@ -31,15 +31,18 @@ def test_format_sample_json_includes_selected_groups_only() -> None:
 
     assert payload == {
         "ts": "2026-05-24T12:00:00+00:00",
-        "frame": {"command": "0x14", "checksum_valid": True, "length_valid": True},
-        "battery": {"soc_percent": 83.0, "power_w": 605.68},
-        "pv": {
-            "strings": [
-                {"index": 1, "voltage_v": 27.7, "current_a": 10.6, "power_w": 294.0},
-                {"index": 2, "voltage_v": 29.2, "current_a": 8.0, "power_w": 232.9},
-            ],
-            "total_power_w": 1139.4,
-        },
+        "frame_command": "0x14",
+        "frame_checksum_valid": True,
+        "frame_length_valid": True,
+        "battery_soc_percent": 83.0,
+        "battery_power_w": 605.68,
+        "pv1_voltage_v": 27.7,
+        "pv1_current_a": 10.6,
+        "pv1_power_w": 294.0,
+        "pv2_voltage_v": 29.2,
+        "pv2_current_a": 8.0,
+        "pv2_power_w": 232.9,
+        "pv_total_power_w": 1139.4,
     }
     assert "grid" not in payload
 
@@ -66,11 +69,11 @@ def test_format_sample_json_full_includes_complete_telemetry() -> None:
 
 def test_print_sample_json_writes_compact_json(capsys) -> None:
     print_sample_json(
-        {"ts": "2026-05-24T12:00:00+00:00", "battery": {"soc_percent": 83.0}},
+        {"ts": "2026-05-24T12:00:00+00:00", "battery_soc_percent": 83.0},
     )
 
     assert capsys.readouterr().out == (
-        '{"battery":{"soc_percent":83.0},"ts":"2026-05-24T12:00:00+00:00"}\n'
+        '{"battery_soc_percent":83.0,"ts":"2026-05-24T12:00:00+00:00"}\n'
     )
 
 

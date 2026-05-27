@@ -75,8 +75,7 @@ def test_stdout_mode_prints_samples_and_skips_mqtt() -> None:
     assert printed_samples == [
         {
             "ts": "2026-05-24T12:00:00+00:00",
-            "frame": {},
-            "battery": {"soc_percent": 83.0},
+            "battery_soc_percent": 83.0,
         }
     ]
     assert sample_count == 1

@@ -84,19 +84,18 @@ def project_sample_payload(
     if "full" in groups:
         return _full_payload(timestamp=timestamp, telemetry=telemetry)
 
-    messages = project_telemetry_messages(
-        timestamp=timestamp,
-        telemetry=telemetry,
-        publish_groups=groups,
-    )
     sample: dict[str, Any] = {
         "ts": _timestamp_json(timestamp),
-        "frame": _jsonable(asdict(telemetry.frame)),
     }
-    for message in messages:
-        sample[message.group] = {
-            key: value for key, value in message.payload.items() if key != "ts"
+    sample.update(
+        {
+            f"frame_{key}": value
+            for key, value in _flat_scalar_mapping(asdict(telemetry.frame)).items()
         }
+    )
+    for group in groups:
+        for key, value in _flat_payload_for_group(telemetry=telemetry, group=group).items():
+            sample[_sample_field_name(group, key)] = value
     return sample
 
 
@@ -175,6 +174,15 @@ def _flat_scalar_mapping(data: dict[str, Any]) -> dict[str, Any]:
 
 def _is_scalar(value: Any) -> bool:
     return value is not None and isinstance(value, (str, int, float, bool))
+
+
+def _sample_field_name(group: str, key: str) -> str:
+    if group == "pv" and key.startswith("pv"):
+        return key
+    if group == "cells" and key.startswith("cell"):
+        return key
+    prefix = "cell" if group == "cells" else group
+    return f"{prefix}_{key}"
 
 
 def _full_payload(*, timestamp: datetime, telemetry: Telemetry) -> dict[str, Any]:

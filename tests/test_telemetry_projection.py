@@ -74,8 +74,9 @@ def test_project_sample_payload_includes_frame_once_for_selected_groups() -> Non
 
     assert payload == {
         "ts": "2026-05-24T12:00:00+00:00",
-        "frame": {"command": "0x14", "checksum_valid": True},
-        "battery": {"soc_percent": 83.0},
+        "frame_command": "0x14",
+        "frame_checksum_valid": True,
+        "battery_soc_percent": 83.0,
     }
 
 
