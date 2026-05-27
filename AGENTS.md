@@ -123,6 +123,11 @@ git push -u origin <branch>
 gh pr create --base main --head <branch> --title "<type>: <summary>"
 ```
 
+Use the PR template's release notes section for user-facing changelog detail.
+Maintainers may edit it before merge. Use `- None` for internal-only changes.
+For breaking changes, include a `BREAKING CHANGE:` note in the PR body before
+squash merge.
+
 Wait for required checks before merge. After a squash merge, sync local `main`
 to the canonical remote history:
 
@@ -157,9 +162,11 @@ The release script:
 - prints the exact release actions and requires typing `release`
 - runs the standard checks
 - uses Commitizen to update `pyproject.toml`, `uv.lock`, and `CHANGELOG.md`
+- gathers merged PR release notes since the previous release tag and appends
+  them under `### Details` in the new changelog section
 - creates `chore(release): vYYYY.M.D[.N]`
 - pushes a `release/vYYYY.M.D[.N]` branch
-- prints the release PR command
+- opens the release PR with GitHub CLI
 - does not push the tag until the release PR is merged
 
 After the release PR is squash-merged into `main`, publish the tag from the
