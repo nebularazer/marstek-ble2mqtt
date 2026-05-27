@@ -6,7 +6,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from marstek_ble_mqtt.models import Telemetry
-from marstek_ble_mqtt.profiles.generic import decode_generic_frame
 from marstek_ble_mqtt.profiles.jupiter_hmm import decode_telemetry_frame
 from marstek_ble_mqtt.protocol import ReadCommand, parse_read_command
 
@@ -36,19 +35,8 @@ JUPITER_HMM = DeviceProfile(
     description="Verified against one Jupiter C / HMM-style battery.",
 )
 
-GENERIC = DeviceProfile(
-    slug="generic",
-    display_name="Generic Marstek/Hame BLE frame capture",
-    maturity="raw",
-    read_command=parse_read_command("bms-data"),
-    decoder=decode_generic_frame,
-    markers=(),
-    description="Validates frames and publishes raw JSON only; no normalized telemetry.",
-)
-
 PROFILES: dict[str, DeviceProfile] = {
     JUPITER_HMM.slug: JUPITER_HMM,
-    GENERIC.slug: GENERIC,
 }
 
 
@@ -67,13 +55,13 @@ def get_profile(slug: str) -> DeviceProfile:
         ) from exc
 
 
-def suggest_profile(markers: tuple[str, ...]) -> DeviceProfile:
+def suggest_profile(markers: tuple[str, ...]) -> DeviceProfile | None:
     """Suggest a profile from advertisement markers."""
 
     marker_set = set(markers)
     if marker_set.intersection(JUPITER_HMM.markers):
         return JUPITER_HMM
-    return GENERIC
+    return None
 
 
 def format_profiles() -> str:

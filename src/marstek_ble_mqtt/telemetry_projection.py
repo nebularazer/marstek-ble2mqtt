@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from marstek_ble_mqtt.models import Telemetry
+from marstek_ble_mqtt.models import CellData, DiagnosticData, PvData, Telemetry
 
 VALID_PUBLISH_GROUPS = frozenset(
     {
@@ -17,7 +17,6 @@ VALID_PUBLISH_GROUPS = frozenset(
         "temperatures",
         "cells",
         "diagnostics",
-        "full",
     }
 )
 
@@ -81,22 +80,18 @@ def project_sample_payload(
     """Return the single stdout sample payload for configured publish groups."""
 
     groups = validate_publish_groups(publish_groups)
-    if "full" in groups:
-        return _full_payload(timestamp=timestamp, telemetry=telemetry)
-
-    messages = project_telemetry_messages(
-        timestamp=timestamp,
-        telemetry=telemetry,
-        publish_groups=groups,
-    )
     sample: dict[str, Any] = {
         "ts": _timestamp_json(timestamp),
-        "frame": _jsonable(asdict(telemetry.frame)),
     }
-    for message in messages:
-        sample[message.group] = {
-            key: value for key, value in message.payload.items() if key != "ts"
+    sample.update(
+        {
+            f"frame_{key}": value
+            for key, value in _flat_scalar_mapping(asdict(telemetry.frame)).items()
         }
+    )
+    for group in groups:
+        for key, value in _flat_payload_for_group(telemetry=telemetry, group=group).items():
+            sample[_sample_field_name(group, key)] = value
     return sample
 
 
@@ -107,19 +102,80 @@ def payload_to_json(payload: dict[str, Any]) -> str:
 
 
 def _payload_for_group(*, timestamp: datetime, telemetry: Telemetry, group: str) -> dict[str, Any]:
-    if group == "full":
-        return _full_payload(timestamp=timestamp, telemetry=telemetry)
-
     return {
         "ts": _timestamp_json(timestamp),
-        **_jsonable(asdict(getattr(telemetry, group))),
+        **_flat_payload_for_group(telemetry=telemetry, group=group),
     }
 
 
-def _full_payload(*, timestamp: datetime, telemetry: Telemetry) -> dict[str, Any]:
-    payload = _jsonable(asdict(telemetry), strip_empty=False)
-    payload.pop("timestamp", None)
-    return {"ts": _timestamp_json(timestamp), **payload}
+def _flat_payload_for_group(*, telemetry: Telemetry, group: str) -> dict[str, Any]:
+    data = getattr(telemetry, group)
+    if isinstance(data, PvData):
+        return _flat_pv_payload(data)
+    if isinstance(data, CellData):
+        return _flat_cell_payload(data)
+    if isinstance(data, DiagnosticData):
+        return _flat_scalar_mapping(asdict(data))
+    return _flat_scalar_mapping(asdict(data))
+
+
+def _flat_pv_payload(pv: PvData) -> dict[str, Any]:
+    payload = _flat_scalar_mapping(
+        {
+            "total_power_w": pv.total_power_w,
+            "mppt_state": pv.mppt_state,
+            "mppt_error": pv.mppt_error,
+            "mppt_warning": pv.mppt_warning,
+            "mppt_temperature_c": pv.mppt_temperature_c,
+        }
+    )
+    for pv_string in pv.strings:
+        prefix = f"pv{pv_string.index}"
+        payload.update(
+            _flat_scalar_mapping(
+                {
+                    f"{prefix}_voltage_v": pv_string.voltage_v,
+                    f"{prefix}_current_a": pv_string.current_a,
+                    f"{prefix}_power_w": pv_string.power_w,
+                }
+            )
+        )
+    return payload
+
+
+def _flat_cell_payload(cells: CellData) -> dict[str, Any]:
+    payload = _flat_scalar_mapping(
+        {
+            "voltage_min_v": cells.voltage_min_v,
+            "voltage_max_v": cells.voltage_max_v,
+            "voltage_avg_v": cells.voltage_avg_v,
+            "voltage_delta_v": cells.voltage_delta_v,
+        }
+    )
+    for index, voltage in enumerate(cells.voltages_v, start=1):
+        if voltage is not None:
+            payload[f"cell{index:02d}_voltage_v"] = voltage
+    for index, temperature in enumerate(cells.temperatures_c, start=1):
+        if temperature is not None:
+            payload[f"cell_temp{index:02d}_c"] = temperature
+    return payload
+
+
+def _flat_scalar_mapping(data: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in data.items() if _is_scalar(value)}
+
+
+def _is_scalar(value: Any) -> bool:
+    return value is not None and isinstance(value, (str, int, float, bool))
+
+
+def _sample_field_name(group: str, key: str) -> str:
+    if group == "pv" and key.startswith("pv"):
+        return key
+    if group == "cells" and key.startswith("cell"):
+        return key
+    prefix = "cell" if group == "cells" else group
+    return f"{prefix}_{key}"
 
 
 def _stable_json(payload: dict[str, Any]) -> str:
@@ -128,24 +184,3 @@ def _stable_json(payload: dict[str, Any]) -> str:
 
 def _timestamp_json(timestamp: datetime) -> str:
     return timestamp.astimezone(UTC).isoformat()
-
-
-def _jsonable(value: Any, *, strip_empty: bool = True) -> Any:
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, dict):
-        result = {
-            key: _jsonable(item, strip_empty=strip_empty)
-            for key, item in value.items()
-            if item is not None
-        }
-        if strip_empty:
-            return {key: item for key, item in result.items() if item not in ({}, [], ())}
-        return result
-    if isinstance(value, (list, tuple)):
-        return [
-            item
-            for item in (_jsonable(item, strip_empty=strip_empty) for item in value)
-            if not strip_empty or item not in ({}, [], ())
-        ]
-    return value

@@ -53,9 +53,12 @@ def test_project_messages_uses_selected_groups_topic_suffixes_and_stable_json() 
         "soc_percent": 83.0,
         "power_w": 605.68,
     }
-    assert json.loads(messages[1].payload_json)["strings"] == [
-        {"index": 1, "voltage_v": 27.7, "power_w": 294.0}
-    ]
+    assert json.loads(messages[1].payload_json) == {
+        "ts": "2026-05-24T12:00:00+00:00",
+        "total_power_w": 1139.4,
+        "pv1_voltage_v": 27.7,
+        "pv1_power_w": 294.0,
+    }
     assert "current_a" not in messages[1].payload_json
 
 
@@ -71,24 +74,16 @@ def test_project_sample_payload_includes_frame_once_for_selected_groups() -> Non
 
     assert payload == {
         "ts": "2026-05-24T12:00:00+00:00",
-        "frame": {"command": "0x14", "checksum_valid": True},
-        "battery": {"soc_percent": 83.0},
+        "frame_command": "0x14",
+        "frame_checksum_valid": True,
+        "battery_soc_percent": 83.0,
     }
 
 
-def test_project_sample_payload_full_keeps_empty_fields_and_uses_sample_timestamp() -> None:
-    payload = project_sample_payload(
-        timestamp=datetime(2026, 5, 24, 12, 0, tzinfo=UTC),
-        telemetry=Telemetry(
-            timestamp=datetime(2026, 5, 24, 11, 59, tzinfo=UTC),
-            frame=FrameMetadata(command="0x14", payload_length=166),
-            battery=BatteryData(soc_percent=83.0),
-            raw={"command": "0x14"},
-        ),
-        publish_groups=("full",),
-    )
-
-    assert payload["ts"] == "2026-05-24T12:00:00+00:00"
-    assert "timestamp" not in payload
-    assert payload["pv"] == {"strings": []}
-    assert payload["raw"] == {"command": "0x14"}
+def test_full_publish_group_is_not_supported() -> None:
+    with pytest.raises(ValueError, match="Unknown MQTT publish group"):
+        project_sample_payload(
+            timestamp=datetime(2026, 5, 24, 12, 0, tzinfo=UTC),
+            telemetry=Telemetry(),
+            publish_groups=("full",),
+        )

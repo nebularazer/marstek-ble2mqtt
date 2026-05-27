@@ -43,33 +43,10 @@ def test_publish_messages_with_client_publishes_configured_group_json_topics() -
     assert messages["marstek/battery"]["voltage_v"] == 52.98
     assert messages["marstek/battery"]["power_w"] == 598.674
     assert messages["marstek/pv"]["total_power_w"] == 890.1
-    assert messages["marstek/pv"]["strings"][0]["voltage_v"] == 27.7
-    assert messages["marstek/pv"]["strings"][3]["power_w"] == 233.2
+    assert messages["marstek/pv"]["pv1_voltage_v"] == 27.7
+    assert messages["marstek/pv"]["pv4_power_w"] == 233.2
     assert "marstek/grid" not in messages
     assert "marstek/full" not in messages
-
-
-def test_publish_messages_with_client_publishes_full_group() -> None:
-    client = FakeMqttClient()
-    telemetry = decode_telemetry_frame(bytes.fromhex(BMS_DATA_FRAME))
-
-    messages_to_publish = project_telemetry_messages(
-        timestamp=telemetry.timestamp,
-        telemetry=telemetry,
-        publish_groups=("full",),
-    )
-    publish_messages_with_client(
-        client,
-        "marstek",
-        messages_to_publish,
-    )
-
-    messages = {topic: payload for topic, payload, _ in client.messages}
-    payload = json.loads(messages["marstek/full"])
-    assert payload["battery"]["soc_percent"] == 46.0
-    assert payload["pv"]["strings"][0]["power_w"] == 238.3
-    assert payload["raw"]["command"] == "0x14"
-    assert "marstek/battery" not in messages
 
 
 def test_publish_messages_with_client_filters_detailed_groups_independently() -> None:
@@ -90,11 +67,12 @@ def test_publish_messages_with_client_filters_detailed_groups_independently() ->
     messages = {topic: json.loads(payload) for topic, payload, _ in client.messages}
     assert messages["marstek/grid"]["frequency_hz"] == 50.01
     assert messages["marstek/temperatures"]["environment_c"] == 38.0
-    assert messages["marstek/cells"]["voltages_v"][0] == 3.314
+    assert messages["marstek/cells"]["cell01_voltage_v"] == 3.314
     assert messages["marstek/diagnostics"]["mppt_error"] == 0
     assert messages["marstek/diagnostics"]["bms_error"] == 0
     assert messages["marstek/diagnostics"]["cell_flag"] == 192
     assert messages["marstek/diagnostics"]["bms_number"] == 1
+    assert "inverter_unknown_words" not in messages["marstek/diagnostics"]
     assert "marstek/battery" not in messages
     assert "marstek/pv" not in messages
 
