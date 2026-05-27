@@ -202,11 +202,12 @@ self-consumption, timing differences, and different voltage measurements.
 `battery.state` describes battery power direction. For this device, battery
 charging is expected from the PV strings, not from the grid.
 
-`run --stdout` prints one compact JSON object per sample. Because stdout combines
-selected groups into one object, group prefixes are used where needed:
+`run --stdout` prints one compact JSON object per sample. Telemetry groups are
+nested under the same group names used for MQTT topics, with frame metadata kept
+in a top-level `frame` object when present:
 
 ```json
-{"battery_soc_percent":46.0,"pv1_power_w":238.3,"pv_total_power_w":890.1,"ts":"2026-05-24T10:00:00+00:00"}
+{"battery":{"power_w":609.861,"soc_percent":98.0,"state":"discharging","voltage_v":53.97},"frame":{"checksum_valid":true,"command":"0x14","length_valid":true},"pv":{"pv1_power_w":272.9,"pv1_voltage_v":27.7,"total_power_w":1017.6},"ts":"2026-05-27T08:57:34.816750+00:00"}
 ```
 
 Operational logs are JSON Lines on stdout. MQTT telemetry is not duplicated in
