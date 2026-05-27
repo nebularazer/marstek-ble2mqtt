@@ -71,7 +71,7 @@ def project_telemetry_messages(
     )
 
 
-def project_sample_payload(
+def project_stdout_sample(
     *,
     timestamp: datetime,
     telemetry: Telemetry,
@@ -83,15 +83,13 @@ def project_sample_payload(
     sample: dict[str, Any] = {
         "ts": _timestamp_json(timestamp),
     }
-    sample.update(
-        {
-            f"frame_{key}": value
-            for key, value in _flat_scalar_mapping(asdict(telemetry.frame)).items()
-        }
-    )
+    frame = _flat_scalar_mapping(asdict(telemetry.frame))
+    if frame:
+        sample["frame"] = frame
     for group in groups:
-        for key, value in _flat_payload_for_group(telemetry=telemetry, group=group).items():
-            sample[_sample_field_name(group, key)] = value
+        payload = _flat_payload_for_group(telemetry=telemetry, group=group)
+        if payload:
+            sample[group] = payload
     return sample
 
 
@@ -173,15 +171,6 @@ def _project_scalar(value: Any) -> Any:
     if isinstance(value, float):
         return round(value, 3)
     return value
-
-
-def _sample_field_name(group: str, key: str) -> str:
-    if group == "pv" and key.startswith("pv"):
-        return key
-    if group == "cells" and (key.startswith("cell") or key.startswith("pack")):
-        return key
-    prefix = "cell" if group == "cells" else group
-    return f"{prefix}_{key}"
 
 
 def _stable_json(payload: dict[str, Any]) -> str:
