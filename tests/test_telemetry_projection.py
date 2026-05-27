@@ -80,6 +80,31 @@ def test_project_sample_payload_includes_frame_once_for_selected_groups() -> Non
     }
 
 
+def test_projected_payloads_round_float_artifacts_without_changing_telemetry() -> None:
+    timestamp = datetime(2026, 5, 24, 12, 0, tzinfo=UTC)
+    telemetry = Telemetry(
+        battery=BatteryData(power_w=609.8610000000001),
+        pv=PvData(total_power_w=1017.5999999999999),
+    )
+
+    messages = project_telemetry_messages(
+        timestamp=timestamp,
+        telemetry=telemetry,
+        publish_groups=("battery", "pv"),
+    )
+    sample = project_sample_payload(
+        timestamp=timestamp,
+        telemetry=telemetry,
+        publish_groups=("battery", "pv"),
+    )
+
+    assert messages[0].payload["power_w"] == 609.861
+    assert messages[1].payload["total_power_w"] == 1017.6
+    assert sample["battery_power_w"] == 609.861
+    assert sample["pv_total_power_w"] == 1017.6
+    assert telemetry.pv.total_power_w == 1017.5999999999999
+
+
 def test_full_publish_group_is_not_supported() -> None:
     with pytest.raises(ValueError, match="Unknown MQTT publish group"):
         project_sample_payload(

@@ -162,11 +162,17 @@ def _flat_cell_payload(cells: CellData) -> dict[str, Any]:
 
 
 def _flat_scalar_mapping(data: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in data.items() if _is_scalar(value)}
+    return {key: _project_scalar(value) for key, value in data.items() if _is_scalar(value)}
 
 
 def _is_scalar(value: Any) -> bool:
     return value is not None and isinstance(value, (str, int, float, bool))
+
+
+def _project_scalar(value: Any) -> Any:
+    if isinstance(value, float):
+        return round(value, 3)
+    return value
 
 
 def _sample_field_name(group: str, key: str) -> str:
