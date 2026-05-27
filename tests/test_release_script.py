@@ -138,6 +138,42 @@ def test_extract_release_notes_ignores_none_and_missing_sections():
     assert release.extract_release_notes("## Summary\n\n- no notes") is None
 
 
+def test_merged_pr_for_commit_collects_pr_url(monkeypatch):
+    def fake_output(command):
+        assert command == [
+            "gh",
+            "pr",
+            "list",
+            "--state",
+            "merged",
+            "--search",
+            "abc123",
+            "--json",
+            "number,title,body,mergeCommit,url",
+            "--limit",
+            "10",
+        ]
+        return """[
+          {
+            "number": 6,
+            "title": "fix: stabilize runtime",
+            "body": "## Release notes\\n\\n- MQTT publishing is stable.",
+            "mergeCommit": {"oid": "abc123"},
+            "url": "https://github.com/nebularazer/marstek-ble2mqtt/pull/6"
+          }
+        ]"""
+
+    monkeypatch.setattr(release, "output", fake_output)
+
+    assert release.merged_pr_for_commit("abc123") == release.MergedPullRequest(
+        number=6,
+        title="fix: stabilize runtime",
+        body="## Release notes\n\n- MQTT publishing is stable.",
+        merge_commit="abc123",
+        url="https://github.com/nebularazer/marstek-ble2mqtt/pull/6",
+    )
+
+
 def test_format_details_section_groups_notes_by_pr():
     details = release.format_details_section(
         [
@@ -148,19 +184,22 @@ def test_format_details_section_groups_notes_by_pr():
                     "## Release notes\n\n- Flat MQTT payloads.\nBREAKING CHANGE: old shape removed."
                 ),
                 merge_commit="abc123",
+                url="https://github.com/nebularazer/marstek-ble2mqtt/pull/4",
             ),
             release.MergedPullRequest(
                 number=5,
                 title="docs: internal cleanup",
                 body="## Release notes\n\n- None",
                 merge_commit="def456",
+                url="https://github.com/nebularazer/marstek-ble2mqtt/pull/5",
             ),
         ]
     )
 
     assert details == (
         "### Details\n\n"
-        "- PR 4: refactor!: flatten MQTT telemetry payloads\n"
+        "- [PR 4](https://github.com/nebularazer/marstek-ble2mqtt/pull/4): "
+        "refactor!: flatten MQTT telemetry payloads\n"
         "  - Flat MQTT payloads.\n"
         "  - BREAKING CHANGE: old shape removed.\n"
     )
@@ -239,7 +278,7 @@ def test_release_pr_body_includes_changelog_without_version_heading(tmp_path, mo
 
 ### Details
 
-- PR 6: fix runtime
+- [PR 6](https://github.com/nebularazer/marstek-ble2mqtt/pull/6): fix runtime
   - MQTT publishing is stable.
 
 ## v2026.5.26 (2026-05-26)
@@ -258,6 +297,6 @@ def test_release_pr_body_includes_changelog_without_version_heading(tmp_path, mo
         "### Fix\n\n"
         "- fix runtime\n\n"
         "### Details\n\n"
-        "- PR 6: fix runtime\n"
+        "- [PR 6](https://github.com/nebularazer/marstek-ble2mqtt/pull/6): fix runtime\n"
         "  - MQTT publishing is stable.\n"
     )
