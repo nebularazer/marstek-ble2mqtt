@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 from pathlib import Path
 
 import marstek_ble_mqtt.output as output
@@ -13,16 +14,43 @@ from marstek_ble_mqtt.scanner import format_scan_results, scan_ble_devices
 from marstek_ble_mqtt.services import dump_ble_services, format_service_dump
 
 DEFAULT_CONFIG_PATH = Path("config.toml")
+RUN_CONFIG_HINT = (
+    "Runtime settings belong in config.toml or environment variables; "
+    "run only accepts --config and --stdout."
+)
+
+
+class _HintingArgumentParser(argparse.ArgumentParser):
+    def parse_args(
+        self,
+        args: list[str] | None = None,
+        namespace: argparse.Namespace | None = None,
+    ) -> argparse.Namespace:
+        self._raw_args = tuple(args if args is not None else sys.argv[1:])
+        return super().parse_args(args, namespace)
+
+    def error(self, message: str) -> None:
+        raw_args = getattr(self, "_raw_args", ())
+        is_run_command = bool(raw_args) and raw_args[0] == "run"
+        should_hint = getattr(self, "_runtime_config_hint", False) or is_run_command
+        if should_hint and message.startswith("unrecognized arguments:"):
+            message = f"{message}\n{RUN_CONFIG_HINT}"
+        super().error(message)
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _HintingArgumentParser(
         prog="marstek-ble2mqtt",
         description="Bluetooth-to-MQTT bridge for Marstek/Hame batteries.",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(
+        dest="command",
+        required=True,
+        parser_class=_HintingArgumentParser,
+    )
 
     run_parser = subparsers.add_parser("run", help="Publish BLE telemetry to MQTT.")
+    run_parser._runtime_config_hint = True
     _add_config_argument(run_parser)
     run_parser.add_argument(
         "--stdout",
