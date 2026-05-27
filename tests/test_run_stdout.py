@@ -8,11 +8,11 @@ from marstek_ble_mqtt.models import (
     Telemetry,
 )
 from marstek_ble_mqtt.output import format_json_event, print_sample_json
-from marstek_ble_mqtt.telemetry_projection import project_sample_payload
+from marstek_ble_mqtt.telemetry_projection import project_stdout_sample
 
 
 def test_format_sample_json_includes_selected_groups_only() -> None:
-    payload = project_sample_payload(
+    payload = project_stdout_sample(
         timestamp=datetime(2026, 5, 24, 12, 0, tzinfo=UTC),
         telemetry=Telemetry(
             timestamp=datetime(2026, 5, 24, 11, 59, tzinfo=UTC),
@@ -31,29 +31,36 @@ def test_format_sample_json_includes_selected_groups_only() -> None:
 
     assert payload == {
         "ts": "2026-05-24T12:00:00+00:00",
-        "frame_command": "0x14",
-        "frame_checksum_valid": True,
-        "frame_length_valid": True,
-        "battery_soc_percent": 83.0,
-        "battery_power_w": 605.68,
-        "pv1_voltage_v": 27.7,
-        "pv1_current_a": 10.6,
-        "pv1_power_w": 294.0,
-        "pv2_voltage_v": 29.2,
-        "pv2_current_a": 8.0,
-        "pv2_power_w": 232.9,
-        "pv_total_power_w": 1139.4,
+        "frame": {
+            "command": "0x14",
+            "checksum_valid": True,
+            "length_valid": True,
+        },
+        "battery": {
+            "soc_percent": 83.0,
+            "power_w": 605.68,
+        },
+        "pv": {
+            "pv1_voltage_v": 27.7,
+            "pv1_current_a": 10.6,
+            "pv1_power_w": 294.0,
+            "pv2_voltage_v": 29.2,
+            "pv2_current_a": 8.0,
+            "pv2_power_w": 232.9,
+            "total_power_w": 1139.4,
+        },
     }
     assert "inverter" not in payload
+    assert "battery_soc_percent" not in payload
 
 
 def test_print_sample_json_writes_compact_json(capsys) -> None:
     print_sample_json(
-        {"ts": "2026-05-24T12:00:00+00:00", "battery_soc_percent": 83.0},
+        {"ts": "2026-05-24T12:00:00+00:00", "battery": {"soc_percent": 83.0}},
     )
 
     assert capsys.readouterr().out == (
-        '{"battery_soc_percent":83.0,"ts":"2026-05-24T12:00:00+00:00"}\n'
+        '{"battery":{"soc_percent":83.0},"ts":"2026-05-24T12:00:00+00:00"}\n'
     )
 
 

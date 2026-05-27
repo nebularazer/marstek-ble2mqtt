@@ -17,7 +17,7 @@ from marstek_ble_mqtt.profiles import DeviceProfile, get_profile
 from marstek_ble_mqtt.requests import open_ble_request_client
 from marstek_ble_mqtt.telemetry_projection import (
     ProjectionMessage,
-    project_sample_payload,
+    project_stdout_sample,
     project_telemetry_messages,
     validate_publish_groups,
 )
@@ -98,7 +98,7 @@ async def run_bridge(options: RunOptions, adapters: RuntimeAdapters | None = Non
                         )
                         if stdout_mode:
                             adapters.print_sample(
-                                project_sample_payload(
+                                project_stdout_sample(
                                     timestamp=sample_started_at,
                                     telemetry=telemetry,
                                     publish_groups=publish_groups,
