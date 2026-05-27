@@ -17,7 +17,6 @@ VALID_PUBLISH_GROUPS = frozenset(
         "temperatures",
         "cells",
         "diagnostics",
-        "full",
     }
 )
 
@@ -81,9 +80,6 @@ def project_sample_payload(
     """Return the single stdout sample payload for configured publish groups."""
 
     groups = validate_publish_groups(publish_groups)
-    if "full" in groups:
-        return _full_payload(timestamp=timestamp, telemetry=telemetry)
-
     sample: dict[str, Any] = {
         "ts": _timestamp_json(timestamp),
     }
@@ -106,9 +102,6 @@ def payload_to_json(payload: dict[str, Any]) -> str:
 
 
 def _payload_for_group(*, timestamp: datetime, telemetry: Telemetry, group: str) -> dict[str, Any]:
-    if group == "full":
-        return _full_payload(timestamp=timestamp, telemetry=telemetry)
-
     return {
         "ts": _timestamp_json(timestamp),
         **_flat_payload_for_group(telemetry=telemetry, group=group),
@@ -185,12 +178,6 @@ def _sample_field_name(group: str, key: str) -> str:
     return f"{prefix}_{key}"
 
 
-def _full_payload(*, timestamp: datetime, telemetry: Telemetry) -> dict[str, Any]:
-    payload = _jsonable(asdict(telemetry), strip_empty=False)
-    payload.pop("timestamp", None)
-    return {"ts": _timestamp_json(timestamp), **payload}
-
-
 def _stable_json(payload: dict[str, Any]) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
@@ -198,23 +185,3 @@ def _stable_json(payload: dict[str, Any]) -> str:
 def _timestamp_json(timestamp: datetime) -> str:
     return timestamp.astimezone(UTC).isoformat()
 
-
-def _jsonable(value: Any, *, strip_empty: bool = True) -> Any:
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, dict):
-        result = {
-            key: _jsonable(item, strip_empty=strip_empty)
-            for key, item in value.items()
-            if item is not None
-        }
-        if strip_empty:
-            return {key: item for key, item in result.items() if item not in ({}, [], ())}
-        return result
-    if isinstance(value, (list, tuple)):
-        return [
-            item
-            for item in (_jsonable(item, strip_empty=strip_empty) for item in value)
-            if not strip_empty or item not in ({}, [], ())
-        ]
-    return value

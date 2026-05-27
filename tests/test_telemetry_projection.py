@@ -80,19 +80,10 @@ def test_project_sample_payload_includes_frame_once_for_selected_groups() -> Non
     }
 
 
-def test_project_sample_payload_full_keeps_empty_fields_and_uses_sample_timestamp() -> None:
-    payload = project_sample_payload(
-        timestamp=datetime(2026, 5, 24, 12, 0, tzinfo=UTC),
-        telemetry=Telemetry(
-            timestamp=datetime(2026, 5, 24, 11, 59, tzinfo=UTC),
-            frame=FrameMetadata(command="0x14", payload_length=166),
-            battery=BatteryData(soc_percent=83.0),
-            raw={"command": "0x14"},
-        ),
-        publish_groups=("full",),
-    )
-
-    assert payload["ts"] == "2026-05-24T12:00:00+00:00"
-    assert "timestamp" not in payload
-    assert payload["pv"] == {"strings": []}
-    assert payload["raw"] == {"command": "0x14"}
+def test_full_publish_group_is_not_supported() -> None:
+    with pytest.raises(ValueError, match="Unknown MQTT publish group"):
+        project_sample_payload(
+            timestamp=datetime(2026, 5, 24, 12, 0, tzinfo=UTC),
+            telemetry=Telemetry(),
+            publish_groups=("full",),
+        )

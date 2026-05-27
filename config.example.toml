@@ -17,7 +17,6 @@ publish_groups = [
   # "temperatures",
   # "cells",
   # "diagnostics",
-  # "full",
 ]
 
 [device]

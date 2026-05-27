@@ -15,7 +15,7 @@ poll_interval = 12
 host = "mqtt.example.test"
 port = 1884
 topic_prefix = "marstek/test"
-publish_groups = ["battery", "pv", "full"]
+publish_groups = ["battery", "pv", "diagnostics"]
 
 [device]
 profile = "jupiter-hmm"
@@ -33,7 +33,7 @@ protocol_writes_path = "captures/writes.jsonl"
     assert config.mqtt.host == "mqtt.example.test"
     assert config.mqtt.port == 1884
     assert config.mqtt.topic_prefix == "marstek/test"
-    assert config.mqtt.publish_groups == ("battery", "pv", "full")
+    assert config.mqtt.publish_groups == ("battery", "pv", "diagnostics")
     assert config.capture.protocol_writes_path == Path("captures/writes.jsonl")
     assert config.device_profile == "jupiter-hmm"
 

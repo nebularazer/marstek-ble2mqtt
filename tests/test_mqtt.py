@@ -49,29 +49,6 @@ def test_publish_messages_with_client_publishes_configured_group_json_topics() -
     assert "marstek/full" not in messages
 
 
-def test_publish_messages_with_client_publishes_full_group() -> None:
-    client = FakeMqttClient()
-    telemetry = decode_telemetry_frame(bytes.fromhex(BMS_DATA_FRAME))
-
-    messages_to_publish = project_telemetry_messages(
-        timestamp=telemetry.timestamp,
-        telemetry=telemetry,
-        publish_groups=("full",),
-    )
-    publish_messages_with_client(
-        client,
-        "marstek",
-        messages_to_publish,
-    )
-
-    messages = {topic: payload for topic, payload, _ in client.messages}
-    payload = json.loads(messages["marstek/full"])
-    assert payload["battery"]["soc_percent"] == 46.0
-    assert payload["pv"]["strings"][0]["power_w"] == 238.3
-    assert payload["raw"]["command"] == "0x14"
-    assert "marstek/battery" not in messages
-
-
 def test_publish_messages_with_client_filters_detailed_groups_independently() -> None:
     client = FakeMqttClient()
     telemetry = decode_telemetry_frame(bytes.fromhex(BMS_DATA_FRAME))

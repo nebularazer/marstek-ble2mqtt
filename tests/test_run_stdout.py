@@ -47,26 +47,6 @@ def test_format_sample_json_includes_selected_groups_only() -> None:
     assert "grid" not in payload
 
 
-def test_format_sample_json_full_includes_complete_telemetry() -> None:
-    payload = project_sample_payload(
-        timestamp=datetime(2026, 5, 24, 12, 0, tzinfo=UTC),
-        telemetry=Telemetry(
-            timestamp=datetime(2026, 5, 24, 11, 59, tzinfo=UTC),
-            frame=FrameMetadata(command="0x14", payload_length=166),
-            battery=BatteryData(soc_percent=83.0),
-            raw={"command": "0x14"},
-        ),
-        publish_groups=("full",),
-    )
-
-    assert payload["ts"] == "2026-05-24T12:00:00+00:00"
-    assert payload["frame"]["payload_length"] == 166
-    assert payload["battery"]["soc_percent"] == 83.0
-    assert payload["pv"] == {"strings": []}
-    assert payload["raw"] == {"command": "0x14"}
-    assert "timestamp" not in payload
-
-
 def test_print_sample_json_writes_compact_json(capsys) -> None:
     print_sample_json(
         {"ts": "2026-05-24T12:00:00+00:00", "battery_soc_percent": 83.0},
