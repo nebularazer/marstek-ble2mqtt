@@ -9,11 +9,12 @@ host = "localhost"
 port = 1883
 username = ""
 password = ""
+client_id = ""
 topic_prefix = "marstek"
 publish_groups = [
   "battery",
   "pv",
-  # "grid",
+  # "inverter",
   # "temperatures",
   # "cells",
   # "diagnostics",

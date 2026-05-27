@@ -65,6 +65,7 @@ def load_config(path: Path | None) -> AppConfig:
         port=int(_env("MQTT_PORT", mqtt_data.get("port", 1883))),
         username=_env("MQTT_USERNAME", mqtt_data.get("username")),
         password=_env("MQTT_PASSWORD", mqtt_data.get("password")),
+        client_id=_optional_string(_env("MQTT_CLIENT_ID", mqtt_data.get("client_id"))),
         topic_prefix=str(_env("MQTT_TOPIC_PREFIX", mqtt_data.get("topic_prefix", "marstek"))),
         publish_groups=_string_tuple(
             _env("MQTT_PUBLISH_GROUPS", mqtt_data.get("publish_groups", ()))
@@ -115,3 +116,12 @@ def _optional_path(value: object) -> Path | None:
     if not text:
         return None
     return Path(text)
+
+
+def _optional_string(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return text

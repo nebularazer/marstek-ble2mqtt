@@ -29,10 +29,11 @@ address = "AA:BB:CC:DD:EE:FF"
 
 [mqtt]
 host = "localhost"
+client_id = ""
 publish_groups = [
   "battery",
   "pv",
-  # "grid",
+  # "inverter",
   # "temperatures",
   # "cells",
   # "diagnostics",
@@ -83,11 +84,12 @@ host = "localhost"
 port = 1883
 username = ""
 password = ""
+client_id = ""
 topic_prefix = "marstek"
 publish_groups = [
   "battery",
   "pv",
-  # "grid",
+  # "inverter",
   # "temperatures",
   # "cells",
   # "diagnostics",
@@ -109,6 +111,7 @@ MQTT_HOST
 MQTT_PORT
 MQTT_USERNAME
 MQTT_PASSWORD
+MQTT_CLIENT_ID
 MQTT_TOPIC_PREFIX
 MQTT_PUBLISH_GROUPS
 MARSTEK_CAPTURE_WRITES_PATH
@@ -117,8 +120,11 @@ MARSTEK_CAPTURE_WRITES_PATH
 `MQTT_PUBLISH_GROUPS` is a comma-separated list, for example:
 
 ```bash
-MQTT_PUBLISH_GROUPS=battery,pv,grid
+MQTT_PUBLISH_GROUPS=battery,pv,inverter
 ```
+
+`mqtt.client_id` is optional. Set it, or `MQTT_CLIENT_ID`, when your broker or
+observability setup expects a stable MQTT client identifier.
 
 ## 📡 MQTT Payloads
 
@@ -132,7 +138,7 @@ For the example config:
 publish_groups = [
   "battery",
   "pv",
-  # "grid",
+  # "inverter",
   # "temperatures",
   # "cells",
   # "diagnostics",
@@ -149,13 +155,31 @@ marstek/pv
 Example `marstek/battery` payload:
 
 ```json
-{"power_w":598.674,"soc_percent":46.0,"ts":"2026-05-24T10:00:00+00:00","voltage_v":52.98}
+{"charge_current_limit_a":10.0,"current_a":11.3,"design_capacity_wh":2560.0,"discharge_current_limit_a":50.0,"power_w":609.861,"soc_percent":98.0,"soh_percent":97.0,"state":"discharging","ts":"2026-05-27T08:57:34.816750+00:00","voltage_limit_v":58.1,"voltage_v":53.97}
 ```
 
 Example `marstek/pv` payload:
 
 ```json
-{"pv1_power_w":238.3,"pv1_voltage_v":27.7,"pv4_power_w":233.2,"total_power_w":890.1,"ts":"2026-05-24T10:00:00+00:00"}
+{"mppt_error":0,"mppt_state":244,"mppt_temperature_c":41.0,"mppt_warning":0,"pv1_current_a":9.8,"pv1_power_w":272.9,"pv1_voltage_v":27.7,"pv2_current_a":5.5,"pv2_power_w":165.7,"pv2_voltage_v":29.7,"pv3_current_a":10.1,"pv3_power_w":290.0,"pv3_voltage_v":28.4,"pv4_current_a":10.1,"pv4_power_w":289.0,"pv4_voltage_v":28.5,"total_power_w":1017.6,"ts":"2026-05-27T08:57:34.816750+00:00"}
+```
+
+Example `marstek/inverter` payload:
+
+```json
+{"current_a":0.0,"frequency_hz":50.02,"inverter_battery_voltage_v":53.7,"inverter_state_word":7,"inverter_temperature_c":40.0,"power_factor_raw":0,"power_w":635.0,"ts":"2026-05-27T08:57:34.816750+00:00","voltage_v":247.4}
+```
+
+Example `marstek/temperatures` payload:
+
+```json
+{"cell_average_c":28.0,"environment_c":34.0,"inverter_c":40.0,"mosfet_c":28.0,"mppt_c":41.0,"tail_mosfet_c":27.0,"ts":"2026-05-27T08:57:34.816750+00:00"}
+```
+
+Example `marstek/cells` payload:
+
+```json
+{"cell01_voltage_v":3.37,"cell02_voltage_v":3.372,"cell03_voltage_v":3.373,"cell04_voltage_v":3.373,"cell05_voltage_v":3.371,"cell06_voltage_v":3.372,"cell07_voltage_v":3.372,"cell08_voltage_v":3.372,"cell09_voltage_v":3.373,"cell10_voltage_v":3.374,"cell11_voltage_v":3.374,"cell12_voltage_v":3.375,"cell13_voltage_v":3.374,"cell14_voltage_v":3.378,"cell15_voltage_v":3.373,"cell16_voltage_v":3.373,"pack_temp01_c":28.0,"pack_temp02_c":28.0,"pack_temp03_c":28.0,"pack_temp04_c":28.0,"ts":"2026-05-27T08:57:34.816750+00:00","voltage_avg_v":3.373,"voltage_delta_v":0.008,"voltage_max_v":3.378,"voltage_min_v":3.37}
 ```
 
 Available groups:
@@ -164,23 +188,41 @@ Available groups:
   and current limits.
 - `pv`: PV1-PV4 voltage/current/power, total PV power, MPPT state, error,
   warning, and temperature.
-- `grid`: grid/inverter voltage, current, frequency, power-like value, power
-  factor raw, inverter state, and inverter temperature.
-- `temperatures`: inverter, MPPT, MOSFET, cell average, per-cell temperature,
-  environment, tail MOSFET, and unconfirmed battery temperature.
-- `cells`: 16 cell voltages, min/max/average/delta, and cell temperature words.
+- `inverter`: inverter/grid-side voltage, current, frequency, send-to-grid
+  power-like value, power factor raw, inverter state, and inverter temperature.
+- `temperatures`: inverter, MPPT, MOSFET, cell average, environment, and tail
+  MOSFET temperatures.
+- `cells`: 16 cell voltages, min/max/average/delta, and 4 pack temperature
+  sensor words.
 - `diagnostics`: known scalar inverter/MPPT/BMS state, error, warning, and flag
-  words. Unknown protocol word maps are intentionally not published.
+  words, including unconfirmed temperature-like fields kept out of normal
+  telemetry. Unknown protocol word maps are intentionally not published.
 
-`run --stdout` prints one compact JSON object per sample. Because stdout combines
-selected groups into one object, group prefixes are used where needed:
+Float values in MQTT and stdout payloads are rounded to at most 3 decimal
+places. `battery.power_w` is BMS-side DC pack power computed from battery
+voltage/current. `inverter.power_w` is a device-reported inverter/grid-side
+value for send-to-grid behavior. These values can differ because they are
+measured at different points and may include conversion loss, inverter
+self-consumption, timing differences, and different voltage measurements.
+
+`battery.state` describes battery power direction. For this device, battery
+charging is expected from the PV strings, not from the grid.
+
+`run --stdout` prints one compact JSON object per sample. Telemetry groups are
+nested under the same group names used for MQTT topics, with frame metadata kept
+in a top-level `frame` object when present:
 
 ```json
-{"battery_soc_percent":46.0,"pv1_power_w":238.3,"pv_total_power_w":890.1,"ts":"2026-05-24T10:00:00+00:00"}
+{"battery":{"power_w":609.861,"soc_percent":98.0,"state":"discharging","voltage_v":53.97},"frame":{"checksum_valid":true,"command":"0x14","length_valid":true},"pv":{"pv1_power_w":272.9,"pv1_voltage_v":27.7,"total_power_w":1017.6},"ts":"2026-05-27T08:57:34.816750+00:00"}
 ```
 
 Operational logs are JSON Lines on stdout. MQTT telemetry is not duplicated in
 the service logs.
+
+The MQTT publisher keeps one connection open for the process lifetime. Paho's
+network loop handles broker reconnects with a bounded 1-60 second backoff.
+Individual MQTT publish failures are logged as `mqtt_publish_failed` and do not
+force a BLE reconnect.
 
 ## 🧭 Device Profiles
 
@@ -249,6 +291,10 @@ Run with Docker Compose:
 ```bash
 docker compose -f docker-compose.example.yml up
 ```
+
+Ctrl-C and Docker stop request a graceful shutdown. The bridge exits the BLE
+context, closes the MQTT publisher, logs `stopped`, and returns the conventional
+signal exit code: `130` for SIGINT and `143` for SIGTERM.
 
 Bluetooth access from containers is host-specific. The example compose file
 shows the common Linux DBus/host-network setup, but your host may need different

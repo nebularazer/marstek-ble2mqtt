@@ -13,7 +13,7 @@ VALID_PUBLISH_GROUPS = frozenset(
     {
         "battery",
         "pv",
-        "grid",
+        "inverter",
         "temperatures",
         "cells",
         "diagnostics",
@@ -71,7 +71,7 @@ def project_telemetry_messages(
     )
 
 
-def project_sample_payload(
+def project_stdout_sample(
     *,
     timestamp: datetime,
     telemetry: Telemetry,
@@ -83,15 +83,13 @@ def project_sample_payload(
     sample: dict[str, Any] = {
         "ts": _timestamp_json(timestamp),
     }
-    sample.update(
-        {
-            f"frame_{key}": value
-            for key, value in _flat_scalar_mapping(asdict(telemetry.frame)).items()
-        }
-    )
+    frame = _flat_scalar_mapping(asdict(telemetry.frame))
+    if frame:
+        sample["frame"] = frame
     for group in groups:
-        for key, value in _flat_payload_for_group(telemetry=telemetry, group=group).items():
-            sample[_sample_field_name(group, key)] = value
+        payload = _flat_payload_for_group(telemetry=telemetry, group=group)
+        if payload:
+            sample[group] = payload
     return sample
 
 
@@ -157,25 +155,22 @@ def _flat_cell_payload(cells: CellData) -> dict[str, Any]:
             payload[f"cell{index:02d}_voltage_v"] = voltage
     for index, temperature in enumerate(cells.temperatures_c, start=1):
         if temperature is not None:
-            payload[f"cell_temp{index:02d}_c"] = temperature
+            payload[f"pack_temp{index:02d}_c"] = temperature
     return payload
 
 
 def _flat_scalar_mapping(data: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in data.items() if _is_scalar(value)}
+    return {key: _project_scalar(value) for key, value in data.items() if _is_scalar(value)}
 
 
 def _is_scalar(value: Any) -> bool:
     return value is not None and isinstance(value, (str, int, float, bool))
 
 
-def _sample_field_name(group: str, key: str) -> str:
-    if group == "pv" and key.startswith("pv"):
-        return key
-    if group == "cells" and key.startswith("cell"):
-        return key
-    prefix = "cell" if group == "cells" else group
-    return f"{prefix}_{key}"
+def _project_scalar(value: Any) -> Any:
+    if isinstance(value, float):
+        return round(value, 3)
+    return value
 
 
 def _stable_json(payload: dict[str, Any]) -> str:

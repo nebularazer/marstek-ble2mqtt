@@ -14,6 +14,7 @@ poll_interval = 12
 [mqtt]
 host = "mqtt.example.test"
 port = 1884
+client_id = "battery-bridge"
 topic_prefix = "marstek/test"
 publish_groups = ["battery", "pv", "diagnostics"]
 
@@ -32,6 +33,7 @@ protocol_writes_path = "captures/writes.jsonl"
     assert config.ble.poll_interval == 12
     assert config.mqtt.host == "mqtt.example.test"
     assert config.mqtt.port == 1884
+    assert config.mqtt.client_id == "battery-bridge"
     assert config.mqtt.topic_prefix == "marstek/test"
     assert config.mqtt.publish_groups == ("battery", "pv", "diagnostics")
     assert config.capture.protocol_writes_path == Path("captures/writes.jsonl")
@@ -51,11 +53,21 @@ def test_environment_overrides_config(tmp_path: Path, monkeypatch) -> None:
 def test_environment_overrides_publish_groups(tmp_path: Path, monkeypatch) -> None:
     config_path = tmp_path / "config.toml"
     config_path.write_text('[mqtt]\npublish_groups = ["battery"]\n', encoding="utf-8")
-    monkeypatch.setenv("MQTT_PUBLISH_GROUPS", "grid, temperatures")
+    monkeypatch.setenv("MQTT_PUBLISH_GROUPS", "inverter, temperatures")
 
     config = load_config(config_path)
 
-    assert config.mqtt.publish_groups == ("grid", "temperatures")
+    assert config.mqtt.publish_groups == ("inverter", "temperatures")
+
+
+def test_environment_overrides_mqtt_client_id(tmp_path: Path, monkeypatch) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[mqtt]\nclient_id = "from-file"\n', encoding="utf-8")
+    monkeypatch.setenv("MQTT_CLIENT_ID", "from-env")
+
+    config = load_config(config_path)
+
+    assert config.mqtt.client_id == "from-env"
 
 
 def test_environment_overrides_capture_writes_path(tmp_path: Path, monkeypatch) -> None:

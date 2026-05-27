@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import signal
 import sys
+from collections.abc import Callable
+from contextlib import suppress
+from dataclasses import dataclass
 from pathlib import Path
 
 import marstek_ble_mqtt.output as output
 from marstek_ble_mqtt.profiles import format_profiles
-from marstek_ble_mqtt.runtime import RunOptions, run_bridge
+from marstek_ble_mqtt.runtime import RunOptions, RuntimeAdapters, run_bridge
 from marstek_ble_mqtt.scanner import format_scan_results, scan_ble_devices
 from marstek_ble_mqtt.services import dump_ble_services, format_service_dump
 
@@ -116,13 +120,67 @@ async def _run_debug_services(args: argparse.Namespace) -> int:
     return 0
 
 
-async def _run_bridge(args: argparse.Namespace) -> int:
-    return await run_bridge(
-        RunOptions(
-            config_path=args.config,
-            stdout=args.stdout,
-        )
+@dataclass
+class _RunStopState:
+    stop_event: asyncio.Event
+    reason: str | None = None
+    exit_code: int = 0
+
+    def request_signal(self, signum: signal.Signals) -> None:
+        self.reason = signum.name
+        self.exit_code = 128 + int(signum)
+        self.stop_event.set()
+
+
+@dataclass
+class _InstalledSignalHandlers:
+    loop_signals: tuple[signal.Signals, ...]
+    previous_handlers: tuple[tuple[signal.Signals, Callable | int | None], ...]
+
+    def close(self) -> None:
+        loop = asyncio.get_running_loop()
+        for signum in self.loop_signals:
+            loop.remove_signal_handler(signum)
+        for signum, previous_handler in self.previous_handlers:
+            signal.signal(signum, previous_handler)
+
+
+def _install_run_signal_handlers(state: _RunStopState) -> _InstalledSignalHandlers:
+    loop = asyncio.get_running_loop()
+    loop_signals = []
+    previous_handlers = []
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        try:
+            loop.add_signal_handler(signum, state.request_signal, signum)
+            loop_signals.append(signum)
+        except (NotImplementedError, RuntimeError):
+            previous_handlers.append((signum, signal.getsignal(signum)))
+            signal.signal(signum, lambda _signum, _frame, sig=signum: state.request_signal(sig))
+
+    return _InstalledSignalHandlers(
+        loop_signals=tuple(loop_signals),
+        previous_handlers=tuple(previous_handlers),
     )
+
+
+async def _run_bridge(args: argparse.Namespace) -> int:
+    stop_state = _RunStopState(stop_event=asyncio.Event())
+    signal_handlers = _install_run_signal_handlers(stop_state)
+    try:
+        return await run_bridge(
+            RunOptions(
+                config_path=args.config,
+                stdout=args.stdout,
+            ),
+            adapters=RuntimeAdapters(
+                stop_event=stop_state.stop_event,
+                stop_reason=lambda: stop_state.reason,
+                stop_exit_code=lambda: stop_state.exit_code,
+            ),
+        )
+    finally:
+        with suppress(ValueError):
+            signal_handlers.close()
 
 
 def _run_profiles(args: argparse.Namespace) -> int:

@@ -56,8 +56,8 @@ class PvData:
 
 
 @dataclass(frozen=True)
-class GridData:
-    """Grid and inverter values decoded from the telemetry frame."""
+class InverterData:
+    """Inverter and grid-side values decoded from the telemetry frame."""
 
     inverter_state_word: int | None = None
     voltage_v: float | None = None
@@ -80,7 +80,6 @@ class TemperatureData:
     cell_temperatures_c: tuple[float, ...] = ()
     environment_c: float | None = None
     tail_mosfet_c: float | None = None
-    battery_unconfirmed_c: float | None = None
 
 
 @dataclass(frozen=True)
@@ -109,6 +108,7 @@ class DiagnosticData:
     bms_warning2: int | None = None
     cell_flag: int | None = None
     bms_number: int | None = None
+    battery_temp_unconfirmed_c: float | None = None
     inverter_unknown_words: dict[str, dict[str, int]] = field(default_factory=dict)
     mppt_unknown_words: dict[str, dict[str, int]] = field(default_factory=dict)
     bms_unknown_words: dict[str, dict[str, int]] = field(default_factory=dict)
@@ -123,7 +123,7 @@ class Telemetry:
     frame: FrameMetadata = FrameMetadata()
     battery: BatteryData = BatteryData()
     pv: PvData = PvData()
-    grid: GridData = GridData()
+    inverter: InverterData = InverterData()
     temperatures: TemperatureData = TemperatureData()
     cells: CellData = CellData()
     diagnostics: DiagnosticData = DiagnosticData()
